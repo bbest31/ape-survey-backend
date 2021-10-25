@@ -17,10 +17,10 @@ type ResponseRewardPool struct {
 	TotalEarned   float64
 	TotalRewarded float64
 	Responses     int
-	Survey        string
+	SurveyID      string
 	CreatedAt     time.Time
 	ClosedAt      time.Time
-	Creator       string
+	UserID        string
 	Participants  []string
 }
 
@@ -34,9 +34,10 @@ type RaffleRewardPool struct {
 	Active       bool
 	Entries      int
 	WinnerCount  int
-	Survey       string
+	SurveyID     string
 	CreatedAt    time.Time
-	Creator      string
+	ClosesAt     time.Time
+	UserID       string
 	Participants []string
 	Winners      []string
 }
