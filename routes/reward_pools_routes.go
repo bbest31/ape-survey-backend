@@ -2,18 +2,18 @@ package routes
 
 import "net/http"
 
-func GetRewardPoolsHandler(w http.ResponseWriter, req *http.Request) {
+func GetRewardPoolHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func PostRewardPoolsHandler(w http.ResponseWriter, req *http.Request) {
+func PostRewardPoolHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func DeleteRewardPoolsHandler(w http.ResponseWriter, req *http.Request) {
+func DeleteRewardPoolHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
-func PatchRewardPoolsHandler(w http.ResponseWriter, req *http.Request) {
+func PatchRewardPoolHandler(w http.ResponseWriter, req *http.Request) {
 
 }

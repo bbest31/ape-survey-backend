@@ -15,3 +15,5 @@
 # vendor/
 
 ape-survey-backend
+.log
+.env
