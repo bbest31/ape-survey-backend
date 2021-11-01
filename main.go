@@ -27,7 +27,7 @@ func main() {
 
 	// TODO look up survey monkey survey response webhook details.
 	router.HandleFunc("/survey-response", routes.SurveyResponseWebhook).Methods(http.MethodPost)
-	router.HandleFunc("/surveys", routes.GetUserSurveys).Methods(http.MethodGet)
+	router.HandleFunc("/surveys/{id}", routes.GetUserSurveys).Methods(http.MethodGet)
 	router.HandleFunc("/connect-surveymonkey", routes.ConnectSurveyMonkey).Methods(http.MethodPost)
 
 	// add middleware

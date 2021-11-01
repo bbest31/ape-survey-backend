@@ -50,4 +50,5 @@ Below is the list of environment variables that need to be set in order for the 
 
 ```
 PORT=
+GOOGLE_APPLICATION_CREDENTIALS="path to key"
 ```
