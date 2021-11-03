@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/apesurvey/ape-survey-backend/v2/routes"
@@ -13,8 +14,8 @@ func main() {
 	router := mux.NewRouter()
 
 	// routes
-	router.HandleFunc("/users", routes.DeleteUserHandler).Methods(http.MethodDelete)
-	router.HandleFunc("/users", routes.PatchUserHandler).Methods(http.MethodPatch)
+	router.HandleFunc("/user/{id}", routes.DeleteUserHandler).Methods(http.MethodDelete, http.MethodOptions)
+	router.HandleFunc("/user/{id}", routes.PatchUserHandler).Methods(http.MethodPatch)
 
 	router.HandleFunc("/reward-pools", routes.GetRewardPoolHandler).Methods(http.MethodGet)
 	router.HandleFunc("/reward-pools", routes.PostRewardPoolHandler).Methods(http.MethodPost)
@@ -27,10 +28,20 @@ func main() {
 
 	// TODO look up survey monkey survey response webhook details.
 	router.HandleFunc("/survey-response", routes.SurveyResponseWebhook).Methods(http.MethodPost)
-	router.HandleFunc("/surveys/{id}", routes.GetUserSurveys).Methods(http.MethodGet)
-	router.HandleFunc("/connect-surveymonkey", routes.ConnectSurveyMonkey).Methods(http.MethodPost)
+	router.HandleFunc("/user/{id}/surveys", routes.GetUserSurveys).Methods(http.MethodGet)
+	router.HandleFunc("/user/{id}/survey/{survey_id}/details", routes.GetUserSurveyDetails).Methods(http.MethodGet)
+	router.HandleFunc("/save-token", routes.SaveSurveyMonkeyAccessToken).Methods(http.MethodPost)
 
 	// add middleware
 	router.Use(server.ValidateAccessToken)
+
+	svr, err := server.DefaultServer()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	svr.SetRouter(router)
+
+	svr.ListenAndServe()
 
 }

@@ -15,8 +15,43 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// TODO - implement
-func ConnectSurveyMonkey(w http.ResponseWriter, req *http.Request) {
+// SaveSurveyMonkeyAccessToken persists the use access token for using the SurveyMonkey API into GCP Secret Manager.
+// https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#add-secret-version
+func SaveSurveyMonkeyAccessToken(w http.ResponseWriter, req *http.Request) {
+
+	// validate request body details
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Println("error while reading connect-surveymonkey req body: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	var requestBody models.SaveTokenRequest
+	err = json.Unmarshal(body, &requestBody)
+	if err != nil {
+		log.Println(" /save-token unable to unmarhsal request body: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	// save the token in the Secret Manager
+	ctx := context.Background()
+	secretManagerService, err := service.NewClient(ctx)
+	if err != nil {
+		log.Println("error while building Secret Manager client: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	defer secretManagerService.Close()
+
+	err = secretManagerService.AddSecretVersion(ctx, requestBody.UserID, requestBody.AccessToken)
+	if err != nil {
+		log.Println("error while saving secret: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
 
 }
 
@@ -138,4 +173,11 @@ func GetUserSurveys(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+}
+
+// GetUserSurveyDetails retrieves the question bank for a specific survey.
+func GetUserSurveyDetails(w http.ResponseWriter, req *http.Request) {
+	fmt.Println(req.URL.Path)
+
+	w.WriteHeader(200)
 }

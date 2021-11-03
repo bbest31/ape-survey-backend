@@ -43,19 +43,28 @@ func (service SecretManagerService) CreateSecretRequest(ctx context.Context, sec
 		return err
 	}
 
+	err = service.AddSecretVersion(ctx, secret.Name, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (service SecretManagerService) AddSecretVersion(ctx context.Context, parent string, data string) error {
 	// Declare the payload to store
 	payload := []byte(data)
 
 	// Build the request
 	addSecretVersionReq := &secretmanagerpb.AddSecretVersionRequest{
-		Parent: secret.Name,
+		Parent: parent,
 		Payload: &secretmanagerpb.SecretPayload{
 			Data: payload,
 		},
 	}
 
 	// Call the API
-	_, err = service.Client.AddSecretVersion(ctx, addSecretVersionReq)
+	_, err := service.Client.AddSecretVersion(ctx, addSecretVersionReq)
 	if err != nil {
 		return err
 	}

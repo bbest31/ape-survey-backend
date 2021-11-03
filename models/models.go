@@ -18,3 +18,8 @@ type SurveysResponse struct {
 		Last string `json:"last"`
 	} `json:"links"`
 }
+
+type SaveTokenRequest struct {
+	UserID      string `json:"user_id"`
+	AccessToken string `json:"token"`
+}
