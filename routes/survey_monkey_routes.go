@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/apesurvey/ape-survey-backend/v2/constants"
 	"github.com/apesurvey/ape-survey-backend/v2/models"
@@ -64,17 +65,6 @@ func SurveyResponseWebhook(w http.ResponseWriter, req *http.Request) {
 // This SurveyMonkey endpoint needs the View Surveys scope.
 func GetUserSurveys(w http.ResponseWriter, req *http.Request) {
 
-	//send request to get surveys
-	client := &http.Client{}
-	defer client.CloseIdleConnections()
-
-	r, err := http.NewRequest("GET", constants.SURVEY_MONKEY_API+"/surveys", nil)
-	if err != nil {
-		log.Println("error while creating new request for user surveys: ", err)
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
 	// get user access token if connected to SurveyMonkey account
 	ctx := context.Background()
 	secretManagerService, err := service.NewClient(ctx)
@@ -96,6 +86,16 @@ func GetUserSurveys(w http.ResponseWriter, req *http.Request) {
 	accessToken := string(secret)
 
 	// request for user surveys
+	client := &http.Client{}
+	defer client.CloseIdleConnections()
+
+	r, err := http.NewRequest("GET", constants.SURVEY_MONKEY_API+"/surveys", nil)
+	if err != nil {
+		log.Println("error while creating new request for user surveys: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
 	r.Header.Add("Accept", "application/json")
 	r.Header.Add("Authorization", fmt.Sprintf("Bearer %v", accessToken))
 
@@ -177,7 +177,76 @@ func GetUserSurveys(w http.ResponseWriter, req *http.Request) {
 
 // GetUserSurveyDetails retrieves the question bank for a specific survey.
 func GetUserSurveyDetails(w http.ResponseWriter, req *http.Request) {
-	fmt.Println(req.URL.Path)
 
-	w.WriteHeader(200)
+	path := strings.Split(req.URL.Path, "/")
+	userID := path[2]
+	surveyID := path[4]
+
+	fmt.Printf("User id = %v and Survey ID = %v", userID, surveyID)
+
+	client := &http.Client{}
+	defer client.CloseIdleConnections()
+
+	r, err := http.NewRequest("GET", constants.SURVEY_MONKEY_API+fmt.Sprintf("/surveys/%v/details", surveyID), nil)
+	if err != nil {
+		log.Println("error while creating new request for user surveys: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	// get user access token if connected to SurveyMonkey account
+	ctx := context.Background()
+	secretManagerService, err := service.NewClient(ctx)
+	if err != nil {
+		log.Println("error while building Secret Manager client: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	secret, err := secretManagerService.AccessSecret(fmt.Sprintf("projects/%s/secrets/%s/versions/latest", constants.GCP_PROJECT_ID, userID), ctx)
+	if err != nil {
+		log.Println("error while requesting user SM access token: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+	accessToken := string(secret)
+
+	r.Header.Add("Accept", "application/json")
+	r.Header.Add("Authorization", fmt.Sprintf("Bearer %v", accessToken))
+
+	// send request
+	res, err := client.Do(r)
+	if err != nil {
+		log.Println("error while requesting user surveys: ", err)
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Println("error while reading SM repsonse: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	//package response
+	data := models.SurveyDetailsResponse{}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		log.Println("error while unmarshalling response: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	questions := []string{}
+
+	for _, page := range data.Pages {
+		questions = append(questions, page.Questions...)
+	}
+
+	err = utils.SendResponseWithData(w, questions)
+	if err != nil {
+		log.Println("error while packaging response: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
 }
