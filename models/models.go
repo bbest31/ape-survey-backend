@@ -63,3 +63,8 @@ type SaveTokenRequest struct {
 	UserID      string `json:"user_id"`
 	AccessToken string `json:"token"`
 }
+
+type PatchUserRequest struct {
+	Email    string `json:"email"`
+	ClientID string `json:"client_id,omitempty"`
+}
