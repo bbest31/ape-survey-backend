@@ -33,7 +33,8 @@ func main() {
 	router.HandleFunc("/save-token", routes.SaveSurveyMonkeyAccessToken).Methods(http.MethodPost)
 
 	// add middleware
-	router.Use(server.ValidateAccessToken)
+	authMiddleware := server.ValidateAccessToken()
+	router.Use(authMiddleware.Handler)
 
 	svr, err := server.DefaultServer()
 	if err != nil {
