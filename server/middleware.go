@@ -14,6 +14,7 @@ import (
 
 var audience string
 var issuer string
+var clientURL string
 
 func init() {
 
@@ -31,6 +32,11 @@ func init() {
 	issuer, ok = os.LookupEnv("AUTH0_APP_DOMAIN")
 	if !ok {
 		log.Panicln("unable to get auth0 app domain")
+	}
+
+	clientURL, ok = os.LookupEnv("CLIENT_URL")
+	if !ok {
+		log.Panicln("unable to get client url")
 	}
 
 }
@@ -113,4 +119,13 @@ func getPemCert(token *jwt.Token) (string, error) {
 
 	return cert, nil
 
+}
+
+// EnableCORS allows the setting of the access control origin to restrict the sources
+// that can send requests to the server.
+func EnableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", clientURL)
+		next.ServeHTTP(w, req)
+	})
 }

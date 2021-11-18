@@ -47,8 +47,13 @@ go test fileName
 ## Environment variables (local setup)
 
 Below is the list of environment variables that need to be set in order for the service to function.
-
+.env file
 ```
 PORT=
-GOOGLE_APPLICATION_CREDENTIALS="path to key"
+AUTH0_API_IDENTIFIER
+AUTH0_APP_DOMAIN
+CLIENT_URL
 ```
+
+In environment set the following variable
+`GOOGLE_APPLICATION_CREDENTIALS=path to key`

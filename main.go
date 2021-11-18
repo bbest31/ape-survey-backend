@@ -34,7 +34,7 @@ func main() {
 
 	// add middleware
 	authMiddleware := server.ValidateAccessToken()
-	router.Use(authMiddleware.Handler)
+	router.Use(server.EnableCORS, authMiddleware.Handler)
 
 	svr, err := server.DefaultServer()
 	if err != nil {

@@ -23,7 +23,7 @@ func SaveSurveyMonkeyAccessToken(w http.ResponseWriter, req *http.Request) {
 	// validate request body details
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.Println("error while reading connect-surveymonkey req body: ", err)
+		log.Println("error while reading save-token req body: ", err)
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
@@ -47,12 +47,14 @@ func SaveSurveyMonkeyAccessToken(w http.ResponseWriter, req *http.Request) {
 
 	defer secretManagerService.Close()
 
-	err = secretManagerService.AddSecretVersion(ctx, requestBody.UserID, requestBody.AccessToken)
+	err = secretManagerService.CreateSecretRequest(ctx, requestBody.UserID, requestBody.AccessToken)
 	if err != nil {
 		log.Println("error while saving secret: ", err)
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
+
+	w.WriteHeader(200)
 
 }
 
