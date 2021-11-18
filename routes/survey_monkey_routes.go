@@ -252,3 +252,36 @@ func GetUserSurveyDetails(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 }
+
+// SurveyMonkeyConnectionCheckHandler checks if the user has connected their SurveyMonkey account.
+func SurveyMonkeyConnectionCheckHandler(w http.ResponseWriter, req *http.Request) {
+
+	params := mux.Vars(req)
+	userID := params["id"]
+
+	// get user access token if connected to SurveyMonkey account
+	ctx := context.Background()
+	secretManagerService, err := service.NewClient(ctx)
+	if err != nil {
+		log.Println("error while building Secret Manager client: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	// TODO what is the return value if the secret doesn't exist?
+	_, err = secretManagerService.AccessSecret(fmt.Sprintf("projects/%s/secrets/%s/versions/latest", constants.GCP_PROJECT_ID, userID), ctx)
+	if err != nil {
+		log.Println("error while requesting user SM access token: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	response := struct {
+		SMConnected bool `json:"sm_connected`
+	}{
+		SMConnected: true,
+	}
+
+	json.NewEncoder(w).Encode(response)
+
+}
