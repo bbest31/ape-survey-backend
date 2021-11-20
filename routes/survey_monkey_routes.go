@@ -13,7 +13,9 @@ import (
 	"github.com/apesurvey/ape-survey-backend/v2/models"
 	"github.com/apesurvey/ape-survey-backend/v2/service"
 	"github.com/apesurvey/ape-survey-backend/v2/utils"
+	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/gorilla/mux"
+	"google.golang.org/grpc/codes"
 )
 
 // SaveSurveyMonkeyAccessToken persists the use access token for using the SurveyMonkey API into GCP Secret Manager.
@@ -255,7 +257,7 @@ func GetUserSurveyDetails(w http.ResponseWriter, req *http.Request) {
 
 // SurveyMonkeyConnectionCheckHandler checks if the user has connected their SurveyMonkey account.
 func SurveyMonkeyConnectionCheckHandler(w http.ResponseWriter, req *http.Request) {
-
+	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
 	userID := params["id"]
 
@@ -268,11 +270,21 @@ func SurveyMonkeyConnectionCheckHandler(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	// TODO what is the return value if the secret doesn't exist?
 	_, err = secretManagerService.AccessSecret(fmt.Sprintf("projects/%s/secrets/%s/versions/latest", constants.GCP_PROJECT_ID, userID), ctx)
 	if err != nil {
-		log.Println("error while requesting user SM access token: ", err)
-		utils.SendErrorResponse(w, err.Error())
+		if err.(*apierror.APIError).GRPCStatus().Code() == codes.NotFound {
+			// user has not connected SM account
+			response := struct {
+				SMConnected bool `json:"sm_connected`
+			}{
+				SMConnected: false,
+			}
+
+			json.NewEncoder(w).Encode(response)
+		} else {
+			log.Println("error while requesting user SM access token: ", err)
+			utils.SendErrorResponse(w, err.Error())
+		}
 		return
 	}
 

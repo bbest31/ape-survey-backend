@@ -24,7 +24,7 @@ func init() {
 	}
 
 	var ok bool
-	audience, ok = os.LookupEnv("AUTH0_API_IDENTIFIER")
+	audience, ok = os.LookupEnv("AUTH0_API")
 	if !ok {
 		log.Panicln("unable to get api identifier")
 	}
@@ -61,17 +61,29 @@ type JSONWebKey struct {
 func ValidateAccessToken() *jwtmiddleware.JWTMiddleware {
 	return jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+
 			// Verify 'aud' claim
-			checkAud := token.Claims.(jwt.MapClaims).VerifyAudience(audience, false)
-			if !checkAud {
-				log.Printf("Invalid aud request attempt: %v\n", token)
-				return token, errors.New("not authorized")
+			for k, v := range token.Claims.(jwt.MapClaims) {
+				if k == "aud" {
+					checkAud := false
+					for _, aud := range v.([]interface{}) {
+						if aud.(string) == audience+"/" {
+							checkAud = true
+							break
+						}
+					}
+
+					if !checkAud {
+						log.Printf("Invalid aud request attempt: %v\n", token.Claims)
+						return token, errors.New("not authorized")
+					}
+				}
 			}
 
 			// Verify 'iss' claim
 			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(issuer, false)
 			if !checkIss {
-				log.Printf("Invalid iss request attempt: %v", token)
+				log.Printf("Invalid iss request attempt: %v", token.Claims)
 				return token, errors.New("not authorized")
 			}
 
@@ -83,6 +95,7 @@ func ValidateAccessToken() *jwtmiddleware.JWTMiddleware {
 			result, _ := jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
 
 			return result, nil
+
 		},
 		SigningMethod: jwt.SigningMethodRS256,
 	})
@@ -126,6 +139,7 @@ func getPemCert(token *jwt.Token) (string, error) {
 func EnableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", clientURL)
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		next.ServeHTTP(w, req)
 	})
 }

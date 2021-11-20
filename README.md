@@ -50,9 +50,10 @@ Below is the list of environment variables that need to be set in order for the 
 .env file
 ```
 PORT=
-AUTH0_API_IDENTIFIER
-AUTH0_APP_DOMAIN
-CLIENT_URL
+AUTH0_API=<protocol://domain>
+AUTH0_APP_DOMAIN=<protocol://domain/>
+CLIENT_URL=
+GOOGLE_APPLICATION_CREDENTIALS=<relative_path>
 ```
 
 In environment set the following variable
