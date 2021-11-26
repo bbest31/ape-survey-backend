@@ -22,48 +22,6 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-// SaveSurveyMonkeyAccessToken persists the use access token for using the SurveyMonkey API into GCP Secret Manager.
-// https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#add-secret-version
-func SaveSurveyMonkeyAccessToken(w http.ResponseWriter, req *http.Request) {
-
-	// validate request body details
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		log.Println("error while reading save-token req body: ", err)
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
-	var requestBody models.SaveTokenRequest
-	err = json.Unmarshal(body, &requestBody)
-	if err != nil {
-		log.Println(" /save-token unable to unmarhsal request body: ", err)
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
-	// save the token in the Secret Manager
-	ctx := context.Background()
-	secretManagerService, err := service.NewClient(ctx)
-	if err != nil {
-		log.Println("error while building Secret Manager client: ", err)
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
-	defer secretManagerService.Close()
-
-	err = secretManagerService.CreateSecretRequest(ctx, requestBody.UserID, requestBody.AccessToken)
-	if err != nil {
-		log.Println("error while saving secret: ", err)
-		utils.SendErrorResponse(w, err.Error())
-		return
-	}
-
-	w.WriteHeader(200)
-
-}
-
 // TODO - implement
 func SurveyResponseWebhook(w http.ResponseWriter, req *http.Request) {
 
@@ -72,6 +30,11 @@ func SurveyResponseWebhook(w http.ResponseWriter, req *http.Request) {
 // GetUserSurveys returns a list of surveys owned or shared with the authenticated user.
 // This SurveyMonkey endpoint needs the View Surveys scope.
 func GetUserSurveys(w http.ResponseWriter, req *http.Request) {
+
+	if req.Method == http.MethodOptions {
+		w.WriteHeader(200)
+		return
+	}
 
 	// get user access token if connected to SurveyMonkey account
 	ctx := context.Background()
@@ -186,6 +149,11 @@ func GetUserSurveys(w http.ResponseWriter, req *http.Request) {
 // GetUserSurveyDetails retrieves the question bank for a specific survey.
 func GetUserSurveyDetails(w http.ResponseWriter, req *http.Request) {
 
+	if req.Method == http.MethodOptions {
+		w.WriteHeader(200)
+		return
+	}
+
 	path := strings.Split(req.URL.Path, "/")
 	userID := path[2]
 	surveyID := path[4]
@@ -261,6 +229,11 @@ func GetUserSurveyDetails(w http.ResponseWriter, req *http.Request) {
 
 // SurveyMonkeyConnectionCheckHandler checks if the user has connected their SurveyMonkey account.
 func SurveyMonkeyConnectionCheckHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method == http.MethodOptions {
+		w.WriteHeader(200)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
 	userID := params["id"]
@@ -302,18 +275,19 @@ func SurveyMonkeyConnectionCheckHandler(w http.ResponseWriter, req *http.Request
 
 }
 
+// SurveyMonkeyOAuthToken uses the short lived access code to retrieve and save the permanent
+// SM user access token in Secret Manager.
+//https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#add-secret-version
 func SurveyMonkeyOAuthToken(w http.ResponseWriter, req *http.Request) {
 
-	data, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		log.Println("error while reading oauth/token request body: ", err)
-		utils.SendErrorResponse(w, err.Error())
+	if req.Method == http.MethodOptions {
+		w.WriteHeader(200)
 		return
 	}
 
 	var tokenRequest models.OAuthTokenRequest
 
-	err = json.Unmarshal(data, &tokenRequest)
+	err := json.NewDecoder(req.Body).Decode(&tokenRequest)
 	if err != nil {
 		log.Println("error while unmarshalling request body: ", err)
 		utils.SendErrorResponse(w, err.Error())
@@ -353,7 +327,7 @@ func SurveyMonkeyOAuthToken(w http.ResponseWriter, req *http.Request) {
 
 	r, err := http.NewRequest("POST", "https://api.surveymonkey.com/oauth/token", strings.NewReader(requestData.Encode()))
 	if err != nil {
-		log.Println("error while creating new request for oath token: ", err)
+		log.Println("error while creating new request for oauth token: ", err)
 		utils.SendErrorResponse(w, err.Error())
 		return
 	}
@@ -397,8 +371,17 @@ func SurveyMonkeyOAuthToken(w http.ResponseWriter, req *http.Request) {
 
 	err = secretManagerService.CreateSecretRequest(ctx, tokenRequest.UserID, tokenResponse.AccessToken)
 	if err != nil {
-		log.Println("error while saving secret: ", err)
-		utils.SendErrorResponse(w, err.Error())
+		if err.(*apierror.APIError).GRPCStatus().Code() == codes.AlreadyExists {
+			// update permanent token
+			err = secretManagerService.AddSecretVersion(ctx, fmt.Sprintf("projects/%s/secrets/%s", constants.GCP_PROJECT_ID, tokenRequest.UserID), tokenResponse.AccessToken)
+			if err != nil {
+				log.Println("error while adding new secret verion: ", err)
+				utils.SendErrorResponse(w, err.Error())
+			}
+		} else {
+			log.Println("error while saving secret: ", err)
+			utils.SendErrorResponse(w, err.Error())
+		}
 		return
 	}
 
