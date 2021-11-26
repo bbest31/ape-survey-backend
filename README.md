@@ -54,6 +54,8 @@ AUTH0_API=<protocol://domain>
 AUTH0_APP_DOMAIN=<protocol://domain/>
 CLIENT_URL=
 GOOGLE_APPLICATION_CREDENTIALS=<relative_path>
+SM_CLIENT_ID=
+SM_CLIENT_SECRET=
 ```
 
 In environment set the following variable

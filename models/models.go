@@ -9,6 +9,8 @@ type Survey struct {
 	Href     string `json:"href"`
 }
 
+//========================Response Structs===============================
+
 type SurveysResponse struct {
 	Data    []Survey `json:"data"`
 	PerPage int      `json:"per_page"`
@@ -59,6 +61,11 @@ type SurveyDetailsResponse struct {
 	}
 }
 
+type OAuthTokenResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+//=====================Request Structs================================
 type SaveTokenRequest struct {
 	UserID      string `json:"user_id"`
 	AccessToken string `json:"token"`
@@ -67,4 +74,9 @@ type SaveTokenRequest struct {
 type PatchUserRequest struct {
 	Email    string `json:"email"`
 	ClientID string `json:"client_id,omitempty"`
+}
+
+type OAuthTokenRequest struct {
+	UserID string `json:"user_id"`
+	Code   string `json:"code"`
 }

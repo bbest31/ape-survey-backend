@@ -33,6 +33,8 @@ func main() {
 	router.HandleFunc("/save-token", routes.SaveSurveyMonkeyAccessToken).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/user/{id}/sm-connected", routes.SurveyMonkeyConnectionCheckHandler).Methods(http.MethodGet, http.MethodOptions)
 
+	router.HandleFunc("/oauth/token", routes.SurveyMonkeyOAuthToken).Methods(http.MethodPost, http.MethodOptions)
+
 	// add middleware
 	authMiddleware := server.ValidateAccessToken()
 	router.Use(server.EnableCORS, authMiddleware.Handler)

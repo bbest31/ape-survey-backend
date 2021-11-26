@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/apesurvey/ape-survey-backend/v2/constants"
@@ -15,6 +18,7 @@ import (
 	"github.com/apesurvey/ape-survey-backend/v2/utils"
 	"github.com/googleapis/gax-go/v2/apierror"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc/codes"
 )
 
@@ -295,5 +299,109 @@ func SurveyMonkeyConnectionCheckHandler(w http.ResponseWriter, req *http.Request
 	}
 
 	json.NewEncoder(w).Encode(response)
+
+}
+
+func SurveyMonkeyOAuthToken(w http.ResponseWriter, req *http.Request) {
+
+	data, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Println("error while reading oauth/token request body: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	var tokenRequest models.OAuthTokenRequest
+
+	err = json.Unmarshal(data, &tokenRequest)
+	if err != nil {
+		log.Println("error while unmarshalling request body: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	client := &http.Client{}
+	defer client.CloseIdleConnections()
+
+	err = godotenv.Load()
+	if err != nil {
+		log.Println("error while reading .env file: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	clientID, ok := os.LookupEnv("SM_CLIENT_ID")
+	if !ok {
+		log.Println("error while reading client id environment variable: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	clientSecret, ok := os.LookupEnv("SM_CLIENT_SECRET")
+	if !ok {
+		log.Println("error while reading client secret environment variable: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	requestData := url.Values{}
+	requestData.Set("redirect_uri", "http://localhost:3000/dashboard/oauth2callback") // TODO make this progammatic
+	requestData.Set("client_secret", clientSecret)
+	requestData.Set("client_id", clientID)
+	requestData.Set("code", tokenRequest.Code)
+	requestData.Set("grant_type", "authorization_code")
+
+	r, err := http.NewRequest("POST", "https://api.surveymonkey.com/oauth/token", strings.NewReader(requestData.Encode()))
+	if err != nil {
+		log.Println("error while creating new request for oath token: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Add("Content-Length", strconv.Itoa(len(requestData.Encode())))
+
+	// send request
+	res, err := client.Do(r)
+	if err != nil {
+		log.Println("error while requesting oauth token: ", err)
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Println("error while reading SM response: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	var tokenResponse models.OAuthTokenResponse
+
+	err = json.Unmarshal(body, &tokenResponse)
+	if err != nil {
+		log.Println("error while unmarshalling response body: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	// Save access token in Secret Manager.
+	ctx := context.Background()
+	secretManagerService, err := service.NewClient(ctx)
+	if err != nil {
+		log.Println("error while building Secret Manager client: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	defer secretManagerService.Close()
+
+	err = secretManagerService.CreateSecretRequest(ctx, tokenRequest.UserID, tokenResponse.AccessToken)
+	if err != nil {
+		log.Println("error while saving secret: ", err)
+		utils.SendErrorResponse(w, err.Error())
+		return
+	}
+
+	w.WriteHeader(200)
 
 }
