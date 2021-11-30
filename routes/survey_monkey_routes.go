@@ -158,8 +158,6 @@ func GetUserSurveyDetails(w http.ResponseWriter, req *http.Request) {
 	userID := path[2]
 	surveyID := path[4]
 
-	fmt.Printf("User id = %v and Survey ID = %v", userID, surveyID)
-
 	client := &http.Client{}
 	defer client.CloseIdleConnections()
 
@@ -213,7 +211,7 @@ func GetUserSurveyDetails(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	questions := []string{}
+	questions := []interface{}{}
 
 	for _, page := range data.Pages {
 		questions = append(questions, page.Questions...)

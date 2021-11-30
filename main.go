@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/apesurvey/ape-survey-backend/v2/routes"
 	"github.com/apesurvey/ape-survey-backend/v2/server"
@@ -26,8 +27,15 @@ func main() {
 	router.HandleFunc("/oauth/token", routes.SurveyMonkeyOAuthToken).Methods(http.MethodPost, http.MethodOptions)
 
 	// add middleware
+	middleware := []mux.MiddlewareFunc{}
 	authMiddleware := server.ValidateAccessToken()
-	router.Use(server.EnableCORS, authMiddleware.Handler)
+	middleware = append(middleware, server.EnableCORS)
+
+	if os.Getenv("DEV") != "true" {
+		middleware = append(middleware, authMiddleware.Handler)
+	}
+
+	router.Use(middleware...)
 
 	svr, err := server.DefaultServer()
 	if err != nil {

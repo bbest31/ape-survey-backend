@@ -57,7 +57,7 @@ type SurveyDetailsResponse struct {
 		QuestionCount int
 		ID            string
 		Href          string
-		Questions     []string
+		Questions     []interface{}
 	}
 }
 
